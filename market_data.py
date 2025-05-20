@@ -19,7 +19,7 @@ from threading import Thread, Event
 from collections import defaultdict
 
 # Global Default Variables for connection
-hostname = 'localhost'      # Data server 
+hostname = 'localhost'      # Data server
 port = '15000'              # Data server port
 ping_timeout_interval = 30  # How often do we expect to recieve Ping from server
 ping_timeout_time = 0       # If not received a Ping by this time then timeout and exit
@@ -50,7 +50,7 @@ closedCnt = 0   # Specifically Closed status message (e.g. item not found)
 logged_in = False # Did we get a successful Login response yet
 
 auth_token = None       # Autorization token for RDP connections
-web_socket_app = None   
+web_socket_app = None
 web_socket_open = False
 shutdown_app = False    # flag to indicate shutdown
 rdp_mode = False        # Are connecting to RDP
@@ -95,21 +95,21 @@ def cleanup(ws):
     shutdown_app=True   # signal to main loop to exit
     #ws.close()     # Cannot use due to Websocket client issue/bug
 
-# Call this each time we send or receive a message 
+# Call this each time we send or receive a message
 # to reset the timeout for the next ping
-def reset_ping_time():          
-    global ping_timeout_time    
+def reset_ping_time():
+    global ping_timeout_time
     ping_timeout_time = time.time() + ping_timeout_interval
 
 # Has it been too long since last ping
-def ping_timedout():    
+def ping_timedout():
     if (ping_timeout_time > 0) and (time.time() > ping_timeout_time):
         print("No ping from server, timing out")
         return True
 
 # Process the JSON message received from server
 def process_message(ws, message_json):
-    global imgCnt, updCnt, statusCnt, pingCnt, closedCnt,shutdown_app
+    global imgCnt, updCnt, statusCnt, pingCnt, closedCnt, shutdown_app
 
     # Get Message Type
     message_type = message_json['Type']
@@ -122,7 +122,7 @@ def process_message(ws, message_json):
     if message_type == "Refresh":
         if message_domain == "Login":
             process_login_response(ws, message_json)
-        else:   
+        else:
             if not (('Complete' in message_json) and    # Default value for Complete is True
                 (message_json['Complete']==False)) :    # Only count Refresh If 'Complete' not present or present as True
                 imgCnt += 1     # Only for Data related Refresh i.e. not Login
@@ -146,9 +146,9 @@ def process_message(ws, message_json):
                 print("Login Request rejected / failed.")
                 shutdown_app=True
         return
-    
+
     elif message_type == "Ping":    # If we get a Ping from the Server
-        pingCnt += 1                # we need to respond with a Pong 
+        pingCnt += 1                # we need to respond with a Pong
         pong_json = { 'Type':'Pong' }
         ws.send(json.dumps(pong_json))
         if (dumpPP):
@@ -166,7 +166,7 @@ def process_message(ws, message_json):
 
 # We received a Login Refresh Response from Server - success!
 def process_login_response(ws, message_json):
-    
+
     global ping_timeout_interval, start_time, logged_in
 
     logged_in = True
@@ -177,7 +177,7 @@ def process_login_response(ws, message_json):
     # Get the Login StreamID and increment - ready for Data request
     next_stream_id = int(message_json['ID']) + 1
 
-    # For statistics - we start timing after Login 
+    # For statistics - we start timing after Login
     # and just before we send our data requests
     start_time = time.time()
     """ Send item request """
@@ -196,7 +196,7 @@ def send_multi_domain_data_request(ws, streamID):
     # Create lists grouped by Domain Type
     for domain, ric in domainRicList:
         grouped[domain].append(ric)
-    
+
     #print(grouped)
 
     # For each Domain type group, call the data request method
@@ -204,15 +204,15 @@ def send_multi_domain_data_request(ws, streamID):
         send_single_domain_data_request(ws, domain, rics, i + streamID)
         # Server allocates unique StreamID to each item in a Batch
         # so we need to increment StreamID appropriately for next request
-        streamID += len(rics)   
+        streamID += len(rics)
 
 
-# Make a Batch request for all the RICs in ricList 
-# with any specified Views and Domains etc. 
+# Make a Batch request for all the RICs in ricList
+# with any specified Views and Domains etc.
 def send_single_domain_data_request(ws, domain, ricList, streamID):
     global reqCnt
     """ Create and send Market Data request for a single Domain type"""
-    
+
     # increment the data items requested count
     reqCnt += len(ricList)
 
@@ -224,7 +224,7 @@ def send_single_domain_data_request(ws, domain, ricList, streamID):
     }
 
     # If user specified a service add it to the request
-    # otherwise server will use any server configured default 
+    # otherwise server will use any server configured default
     if serviceName:
         mp_req_json['Key']['Service'] = serviceName
 
@@ -233,7 +233,7 @@ def send_single_domain_data_request(ws, domain, ricList, streamID):
         mp_req_json['View'] = viewList
     if (domain!=None):
         mp_req_json['Domain'] = domain
-    
+
     # Did user specify Snapshot Mode - if so override Streaming default of True
     if snapshot:
         mp_req_json['Streaming'] = False
@@ -253,7 +253,7 @@ def reissue_token(ws, token):
 # Send a Login request - for ADS or RDP
 def send_login_request(ws, is_refresh_token=False):
     """ Generate a login request from command line data (or defaults) and send """
-    
+
     # Set common values for RDP and ADS login
     # Note StreamID is 1
     login_json = {
@@ -278,7 +278,7 @@ def send_login_request(ws, is_refresh_token=False):
             login_json['Refresh'] = False
     else:   # TREP ADS connection
         login_json['Key']['Name'] = user
-    
+
     ws.send(json.dumps(login_json))
     if (dumpSent):
         print("SENT Login Request:")
@@ -307,6 +307,9 @@ def on_message(ws, message):
     # extract and process individual messages
     for singleMsg in message_json:
         process_message(ws, singleMsg)
+
+        print(singleMsg)
+
     # We have received a message from server - so reset the Ping timeout
     reset_ping_time()
 
